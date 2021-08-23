@@ -2,6 +2,4 @@ jupyterlab
 matplotlib
 numpy
 pandas
-scikit-learn
-scipy
-tensorflow-gpu
+mip
