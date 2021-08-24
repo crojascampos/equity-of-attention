@@ -65,12 +65,9 @@ class ILPBasedEOA:
         self.mip_prepared = False
 
         # Functions for getting the position bias, unfairness value and ranking quality
-        self.pos_bias = lambda pos: 0 if pos > self.k else self.prob * \
-            math.pow(1-self.prob, pos-1)
-        self.unfairness = lambda i, j: 0 if self.mip_vars[i][j] == 0 else math.fabs(
-            self.accummA[i] + self.pos_bias(j) - (self.accummR[i] + self.it_prefilter[self.this_ranking][i]))
-        self.ranking_quality = lambda i, j: 0 if self.mip_vars[i][j] == 0 else (
-            math.pow(2, self.it_prefilter[self.this_ranking][i])-1) / math.log2(j+2)
+        self.pos_bias = lambda pos: 0 if pos > self.k else self.prob * math.pow(1-self.prob, pos-1)
+        self.unfairness = lambda i, j: 0 if self.mip_vars[i][j] == 0 else math.fabs(self.accummA[i] + self.pos_bias(j) - (self.accummR[i] + self.it_prefilter[self.this_ranking][i]))
+        self.ranking_quality = lambda i, j: 0 if self.mip_vars[i][j] == 0 else (math.pow(2, self.it_prefilter[self.this_ranking][i])-1) / math.log2(j+2)
 
         # Counters
         self.this_ranking = 0
@@ -86,9 +83,9 @@ class ILPBasedEOA:
         prob : float
             Probability that any subject will be chosen.
         k : int
-            Ammount of top subjects to consider in calculations.
+            Amount of top subjects to consider in calculations.
         pref_n : int
-            Ammount of subjects to prefilter on each iteration.
+            Amount of subjects to prefilter on each iteration.
         theta : float
             Multiplicative threshold for IDCG@k.
         """
@@ -105,7 +102,7 @@ class ILPBasedEOA:
                 "Could not prepare -> 'theta' must be within 0 (inclusive) and 1 (inclusive)")
 
         # Sets the parameters to the corresponding attributes
-        self.k, self.pref_n = min(k, pref_n), pref_n-k
+        self.k, self.pref_n = min(k, pref_n), pref_n
         self.prob, self.theta = prob, theta
 
         # Sets the counters to the start
@@ -115,7 +112,7 @@ class ILPBasedEOA:
         # Gets the ordered ranking positions without modifying the original rankings
         self.it_ranking = [numpy.argsort(-r) for r in self.ranking]
         # Defines the prefilter array (NOT YET READY)
-        self.it_prefilter = [[0] * (self.pref_n + self.k)] * self.qty_subjects
+        self.it_prefilter = 0
 
         # Defines the initial accummulated attributes as 0
         self.accummA = self.accummR = [0] * self.qty_subjects
@@ -126,16 +123,16 @@ class ILPBasedEOA:
         self.mip_model = Model(sense=MINIMIZE, solver_name=CBC)
         # Creates MIP variables
         self.mip_vars = [[self.mip_model.add_var("vars({},{})".format(
-            i, j), var_type=BINARY) for j in range(self.qty_subjects)] for i in range(self.qty_subjects)]
+            i, j), var_type=BINARY) for j in range(self.pref_n)] for i in range(self.pref_n)]
         # Sets Objective function
-        self.mip_model.objective = minimize(xsum(self.unfairness(i, j)*self.mip_vars[i][j] for i in range(self.qty_subjects) for j in range(self.qty_subjects)))
+        self.mip_model.objective = minimize(xsum(self.unfairness(i, j)*self.mip_vars[i][j] for i in range(self.pref_n) for j in range(self.pref_n)))
         # Sets Constraint: makes sure that this ranking dcg is the same or better than the original dcg, within a threshold theta
-        self.mip_model += xsum(self.ranking_quality(i, j)*self.mip_vars[i][j] for j in range(self.k) for i in range(self.qty_subjects)) >= self.theta * self.idcg_constant[self.this_ranking]
+        self.mip_model += xsum(self.ranking_quality(i, j)*self.mip_vars[i][j] for j in range(self.k) for i in range(self.pref_n)) >= self.theta * self.idcg_constant[self.this_ranking]
         # Sets Constraint: makes sure that the solution is a bijective mapping of subjects
-        for j in range(self.qty_subjects):
-            self.mip_model += xsum(self.mip_vars[i][j] for i in range(self.qty_subjects)) == 1
-        for i in range(self.qty_subjects):
-            self.mip_model += xsum(self.mip_vars[i][j] for j in range(self.qty_subjects)) == 1
+        for j in range(self.pref_n):
+            self.mip_model += xsum(self.mip_vars[i][j] for i in range(self.pref_n)) == 1
+        for i in range(self.pref_n):
+            self.mip_model += xsum(self.mip_vars[i][j] for j in range(self.pref_n)) == 1
 
         # Set flag indicating that the MIP is prepared
         self.mip_prepared = True
@@ -154,22 +151,21 @@ class ILPBasedEOA:
             raise Exception(
                 "The model is not prepared, call the prepare method first before starting the model.")
 
-        # TODO: Prefiltering
-        """
         print("Prefiltering...")
+        self.it_prefilter = []
         for i, val in enumerate(self.it_ranking):
-            test = val[:self.k]
-            test2 = [self.accummA[j] - (self.accummR[j] + self.ranking[i][val[j]]) for j in enumerate()]
-            print(test)
-            print(test2)
-            print(val[numpy.argsort(test2)[:self.pref_n]])
-            test = numpy.concatenate((test, numpy.argsort(test2)[:self.pref_n]))
-
-            print(test)
-        """
+            print(val[:self.k])
+            temp = numpy.concatenate(
+                (val[:self.k], numpy.argsort(
+                    [self.accummA[i] - (self.accummR[i] + rel) for rel in self.ranking[i][:self.k]])[:self.pref_n]))
+            print(temp)
+            self.it_prefilter = numpy.concatenate((self.it_prefilter, temp))
+            print(self.it_prefilter)
 
         for iteration in range(it):
+            self.this_iteration = iteration
             for r in range(self.qty_rankings):
+                self.this_ranking = r
                 print("Optimizing... iteration {}, ranking {}".format(iteration, r))
                 self.mip_model.optimize()
                 # TODO: Save the order generated as this ranking new order for the next iteration
