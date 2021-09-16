@@ -288,10 +288,10 @@ class ILPBased:
             print("="*60)
             print("Iteration {}".format(it))
 
-            print("Optimizing", sep="")
+            print("Optimizing", end="")
             # Loop of rankings
             for rank in range(self.rank_qty):
-                print(".", sep="")
+                print(".", end="")
 
                 # Prefilter the ranking
                 low_fairshare_subj = argsort([
