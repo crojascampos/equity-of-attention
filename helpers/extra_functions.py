@@ -66,7 +66,7 @@ def l1_norm_dist(dist_A:float,dist_R:float) -> float:
     dist_R : float
         Empirical distribution R (relevance)
     """
-    return fabs(dist_A - dist_R)
+    return fabs(dist_A - (dist_R))
 
 def dcg_score(value:float,pos:int) -> float:
     """

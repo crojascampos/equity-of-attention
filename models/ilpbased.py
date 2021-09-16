@@ -288,10 +288,10 @@ class ILPBased:
             print("="*60)
             print("Iteration {}".format(it))
 
+            print("Optimizing", sep="")
             # Loop of rankings
             for rank in range(self.rank_qty):
-                print("-"*60)
-                print("Ranking {}".format(rank))
+                print(".", sep="")
 
                 # Prefilter the ranking
                 low_fairshare_subj = argsort([
@@ -344,6 +344,8 @@ class ILPBased:
                     for s in range(self.subj_qty)
                 ])
             )
+
+            print("OK")
 
     def get_result(
         self: "ILPBased",
