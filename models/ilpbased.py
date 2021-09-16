@@ -3,7 +3,6 @@
 # Imports
 from math import inf
 from numpy import array, concatenate
-from numpy.typing import ArrayLike
 from numpy.core.fromnumeric import argsort, ndim, shape, sort
 from pulp.pulp import LpProblem, LpVariable, lpSum
 from pulp.utilities import value
@@ -35,17 +34,17 @@ class ILPBased:
 
     def __init__(
         self: "ILPBased",
-        rank_series: ArrayLike,
-        bounds: ArrayLike,
+        rank_series: object,
+        bounds: object,
     ):
         """ILP Based Equity of Attention Model Constructor
 
         Args:
-            ranking_series (ArrayLike): A ranking or an array of rankings.
+            ranking_series (object): A ranking or an array of rankings.
                 A ranking is a collection of relevance scores, with each index corresponding to a
                 subject. If an array of rankings is passed, the relevance scores for each subject
                 must be on the same index for every ranking.
-            bounds (ArrayLike): A pair or an array of pairs of values.
+            bounds (object): A pair or an array of pairs of values.
                 Each pair corresponds to one ranking in order. Each index on bounds must correspond
                 to a ranking in rankings. If only one ranking is passed, only a pair of values is
                 needed.
