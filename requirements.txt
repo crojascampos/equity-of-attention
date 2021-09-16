@@ -1,5 +1,0 @@
-jupyterlab
-matplotlib
-numpy
-pandas
-mip
